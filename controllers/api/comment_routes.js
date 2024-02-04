@@ -1,114 +1,36 @@
 const router = require('express').Router();
 const { User, Blog, Comment } = require('../../models');
+const withAuth = require('../../utils/auth');
 
-router.get('/', (req, res) => {
-    Comment.findAll({
-        attributes: ['id', 'comment', 'date'],
-        include: [
-            {
-                model: User,
-                attributes: ['username']
-            },
-            {
-                model: Blog,
-                attributes: ['title']
-            }
-        ]
-    })
-        .then(dbCommentData => res.json(dbCommentData))
-        .catch(err => {
-            console.log(err);
-            res.status(500).json(err);
+router.post('/', withAuth, async (req, res) => {
+    try {
+        const newBlog = await Blog.create({
+            ...req.body,
+            user_id: req.session.user_id,
         });
-});
 
-router.get('/:id', (req, res) => {
-    Comment.findOne({
-        where: {
-            id: req.params.id
-        },
-        attributes: ['id', 'comment', 'date'],
-        include: [
-            {
-                model: User,
-                attributes: ['username']
-            },
-            {
-                model: Blog,
-                attributes: ['title']
-            }
-        ]
-    })
-        .then(dbCommentData => {
-            if (!dbCommentData) {
-                res.status(404).json({ message: 'No comment found with this id' });
-                return;
-            }
-            res.json(dbCommentData);
-        })
-        .catch(err => {
-            console.log(err);
-            res.status(500).json(err);
-        });
-});
-
-router.post('/', (req, res) => {
-    Comment.create({
-        comment: req.body.comment,
-        user_id: req.body.user_id,
-        blog_id: req.body.blog_id
-    })
-        .then(dbCommentData => res.json(dbCommentData))
-        .catch(err => {
-            console.log(err);
-            res.status(400).json(err);
-        });
-});
-
-router.put('/:id', (req, res) => {
-    if (!req.session.loggedIn) {
-        return res.status(403).json({ message: 'You must be logged in to edit a comment' });
+        res.status(200).json(newBlog);
+    } catch (err) {
+        res.status(400).json(err);
     }
-
-    Comment.update(req.body, {
-        where: {
-            id: req.params.id
-        }
-    })
-        .then(dbCommentData => {
-            if (!dbCommentData) {
-                res.status(404).json({ message: 'No comment found with this id' });
-                return;
-            }
-            res.json(dbCommentData);
-        })
-        .catch(err => {
-            console.log(err);
-            res.status(500).json(err);
-        });
 });
 
-router.delete('/:id', (req, res) => {
-    if (!req.session.loggedIn) {
-        return res.status(403).json({ message: 'You must be logged in to delete a comment' });
+router.delete('/:id', withAuth, async (req, res) => {
+    try {
+        const blogData = await Blog.destroy({
+            where: {
+                id: req.params.id,
+                user_id: req.session.user_id,
+            },
+        });
+
+        if (!blogData) {
+            res.status(404).json({ message: 'No blog found with this id!' });
+            return;
+        }
+
+        res.status(200).json(blogData);
+    } catch (err) {
+        res.status(500).json(err);
     }
-
-    Comment.destroy({
-        where: {
-            id: req.params.id
-        }
-    })
-        .then(dbCommentData => {
-            if (!dbCommentData) {
-                res.status(404).json({ message: 'No comment found with this id' });
-                return;
-            }
-            res.json(dbCommentData);
-        })
-        .catch(err => {
-            console.log(err);
-            res.status(500).json(err);
-        });
 });
-
-module.exports = router;
