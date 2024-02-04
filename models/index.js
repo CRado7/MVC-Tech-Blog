@@ -2,7 +2,9 @@ const User = require('./user');
 const Comment = require('./comment');
 const Blog = require('./blog');
 
-User.hasMany(Blog);
+User.hasMany(Blog, {
+    onDelete: 'CASCADE',
+});
 Blog.belongsTo(User);
 
 Blog.hasMany(Comment);
